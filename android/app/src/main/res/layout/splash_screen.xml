@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/white">
+
+    <!-- Light mode background -->
+    <View
+        android:id="@+id/background_light"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#F9FAFB" />
+
+    <!-- Dark mode background (will be toggled programmatically) -->
+    <View
+        android:id="@+id/background_dark"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#1E293B"
+        android:visibility="gone" />
+
+    <!-- TaskFlow text -->
+    <TextView
+        android:id="@+id/splash_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:text="TaskFlow"
+        android:textSize="36sp"
+        android:textColor="#2D3748"
+        android:fontFamily="@font/poppins_bold" />
+</RelativeLayout>

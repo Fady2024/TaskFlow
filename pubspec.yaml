@@ -1,0 +1,71 @@
+name: new_app
+description: "A new Flutter project."
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0' # Updated to support Flutter 3.19.x stable as of March 2025
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  shared_preferences: ^2.2.3 # Latest as of March 2025
+  intl: ^0.19.0 # Stable, no major updates needed
+  cupertino_icons: ^1.0.8 # Latest
+  timezone: ^0.10.0 # Latest
+  provider: ^6.1.2 # Latest
+  shimmer: ^3.0.0 # Latest
+  sqflite: ^2.3.3+1 # Latest patch
+  google_fonts: ^6.2.1 # Latest
+  flutter_side_menu: ^0.5.41 # No updates, seems fine
+  badges: ^3.1.2 # Latest
+  path_provider: ^2.1.4 # Latest
+  flutter_staggered_animations: ^1.1.1 # Latest
+  uuid: ^4.5.0 # Latest
+  path: ^1.9.0 # Latest
+  flutter_bloc: ^8.1.5 # Use 8.x for stability with Flutter 3.19.x
+  equatable: ^2.0.5 # Latest
+  image_picker: ^1.1.2 # Latest
+  lottie: ^3.1.2 # Latest
+  google_sign_in: ^6.2.1 # Latest
+  sign_in_with_apple: ^6.1.1 # Latest
+  supabase_flutter: ^2.5.6 # Latest
+  flutter_secure_storage: ^9.2.2 # Latest
+  http: ^1.2.2 # Latest
+  oauth2: ^2.0.2 # Latest
+  flutter_spinkit: ^5.2.1 # Latest
+  drag_and_drop_lists: ^0.4.2 # No updates, seems fine
+  hive: ^2.2.3 # Latest
+  hive_flutter: ^1.1.0 # Latest
+  json_annotation: ^4.9.0 # Latest
+  sliver_tools: ^0.2.12 # Latest
+  reorderables: ^0.6.0 # Latest
+  flutter_local_notifications: ^19.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0 # Latest
+  flutter_launcher_icons: ^0.13.1 # Downgraded to avoid potential issues
+  hive_generator: ^2.0.1 # Latest
+  build_runner: ^2.4.12 # Latest
+  json_serializable: ^6.8.0 # Latest
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/
+    - images/
+    - android/app/src/main/res/raw/notification_sound.mp3
+    - assets/icons/MyAppIcon.png
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/MyAppIcon.png"
+  adaptive_icon_background: "#e5e5e5"
+  adaptive_icon_foreground: "assets/icons/MyApp_foreground.png"
+  min_sdk_android: 21
