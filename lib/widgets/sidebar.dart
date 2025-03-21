@@ -37,6 +37,7 @@ class Sidebar extends StatefulWidget {
 
 class _SidebarState extends State<Sidebar> {
   final TaskService _taskService = TaskService();
+  bool _isProductivityExpanded = false;
 
   @override
   Widget build(BuildContext context) {
@@ -94,6 +95,35 @@ class _SidebarState extends State<Sidebar> {
                         color: const Color(0xFFE91E63), badgeCount: favoriteCount),
                     _buildDrawerItem(4, Icons.task_alt_outlined, 'All Tasks',
                         color: const Color(0xFF2ECC71), badgeCount: allTasksCount),
+                    _buildSeparator(),
+                    _buildDrawerItem(
+                      5,
+                      Icons.trending_up,
+                      'Productivity & Analytics',
+                      color: const Color(0xFF00B4D8),
+                      onTap: () {
+                        widget.onItemTapped(5);
+                        setState(() {
+                          _isProductivityExpanded = !_isProductivityExpanded;
+                        });
+                        if (!widget.isDrawerPinned) Navigator.pop(context);
+                      },
+                    ),
+                    _buildDrawerItem(
+                      6,
+                      Icons.timer,
+                      'Pomodoro Timer',
+                      color: const Color(0xFF00B4D8),
+                    ),
+                    if (_isProductivityExpanded && widget.isDrawerExpanded)
+                      Column(
+                        children: [
+                          _buildSubDrawerItem(7, Icons.bar_chart, 'Task Completion Rate',
+                              color: const Color(0xFF00B4D8)),
+                          _buildSubDrawerItem(8, Icons.show_chart, 'Daily/Weekly Progress',
+                              color: const Color(0xFF00B4D8)),
+                        ],
+                      ),
                     _buildSeparator(),
                     ...widget.customLists.asMap().entries.map((entry) => _buildCustomListItem(entry)),
                     _buildDrawerItem(-1, Icons.add_circle_outline, 'Add List',
@@ -275,8 +305,44 @@ class _SidebarState extends State<Sidebar> {
     );
   }
 
+  Widget _buildSubDrawerItem(int index, IconData icon, String title, {required Color color}) {
+    final theme = Theme.of(context);
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeInOut,
+      margin: const EdgeInsets.only(left: 32, right: 8, top: 2,bottom: 2),
+      decoration: BoxDecoration(
+        color: widget.selectedIndex == index ? color.withOpacity(0.2) : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ListTile(
+        leading: Icon(
+          icon,
+          color: widget.selectedIndex == index ? color : theme.iconTheme.color?.withOpacity(0.7),
+          size: 20,
+        ),
+        title: Text(
+          title,
+          style: GoogleFonts.poppins(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: widget.selectedIndex == index ? color : theme.textTheme.bodyMedium?.color,
+          ),
+        ),
+        selected: widget.selectedIndex == index,
+        onTap: () {
+          widget.onItemTapped(index);
+          if (!widget.isDrawerPinned) Navigator.pop(context);
+        },
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+        dense: true,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
   Widget _buildCustomListItem(MapEntry<int, Map<String, dynamic>> entry) {
-    final index = 5 + entry.key;
+    final index = 6 + entry.key + 2;
     final list = entry.value;
     final theme = Theme.of(context);
     const color = Color(0xFF00CEC9);

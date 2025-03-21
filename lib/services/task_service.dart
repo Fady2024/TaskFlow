@@ -12,7 +12,7 @@ class TaskService {
 
     _database = await openDatabase(
       path,
-      version: 5,
+      version: 6,
       onCreate: (db, version) async {
         print('Creating new database at $path');
         await db.execute('''
@@ -26,6 +26,7 @@ class TaskService {
             isFavorite INTEGER,
             isImportant INTEGER,
             addedDate TEXT,
+            completedDate TEXT, -- Add the new column
             listId TEXT,
             snoozeDuration INTEGER,
             repeatOption TEXT,
@@ -44,6 +45,7 @@ class TaskService {
             isFavorite INTEGER,
             isImportant INTEGER,
             addedDate TEXT,
+            completedDate TEXT, -- Add the new column
             listId TEXT,
             snoozeDuration INTEGER,
             repeatOption TEXT,
@@ -78,6 +80,11 @@ class TaskService {
           await db.execute('ALTER TABLE tasks ADD COLUMN pageOrder TEXT DEFAULT "{}"');
           await db.execute('ALTER TABLE completed_tasks ADD COLUMN pageOrder TEXT DEFAULT "{}"');
           print('Database upgraded: Added pageOrder column');
+        }
+        if (oldVersion < 6) {
+          await db.execute('ALTER TABLE tasks ADD COLUMN completedDate TEXT');
+          await db.execute('ALTER TABLE completed_tasks ADD COLUMN completedDate TEXT');
+          print('Database upgraded: Added completedDate column');
         }
       },
       onOpen: (db) async {
@@ -196,6 +203,7 @@ class TaskService {
           {
             ...updatedTask.toJson(),
             'dueDate': updatedTask.dueDate?.toIso8601String(),
+            'completedDate': updatedTask.completedDate?.toIso8601String(),
             'pageOrder': jsonEncode(updatedTask.pageOrder),
           },
           conflictAlgorithm: ConflictAlgorithm.replace,
@@ -222,6 +230,7 @@ class TaskService {
           {
             ...taskToSave.toJson(),
             'dueDate': null,
+            'completedDate': taskToSave.completedDate?.toIso8601String(),
             'pageOrder': jsonEncode(taskToSave.pageOrder),
           },
           conflictAlgorithm: ConflictAlgorithm.replace,
@@ -366,6 +375,7 @@ class TaskService {
               {
                 '[order]': task.order,
                 'pageOrder': jsonEncode(task.pageOrder),
+                'completedDate': task.completedDate?.toIso8601String(),
               },
               where: 'id = ?',
               whereArgs: [task.id],
@@ -376,6 +386,7 @@ class TaskService {
               {
                 '[order]': task.order,
                 'pageOrder': jsonEncode(task.pageOrder),
+                'completedDate': task.completedDate?.toIso8601String(),
               },
               where: 'id = ?',
               whereArgs: [task.id],

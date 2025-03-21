@@ -12,8 +12,10 @@ class Task {
   bool isFavorite;
   bool isImportant;
   DateTime addedDate;
+  DateTime? completedDate;
   String? listId;
   int order;
+  int? snoozeDuration;
   Map<String, int> pageOrder;
 
   static Map<String, Color> categoryColors = {
@@ -33,7 +35,9 @@ class Task {
     this.isFavorite = false,
     this.isImportant = false,
     required this.addedDate,
+    this.completedDate,
     this.listId,
+    this.snoozeDuration,
     this.order = 0,
     Map<String, int>? pageOrder,
   })  : id = id ?? const Uuid().v4(),
@@ -51,8 +55,10 @@ class Task {
     'isFavorite': isFavorite ? 1 : 0,
     'isImportant': isImportant ? 1 : 0,
     'addedDate': addedDate.toIso8601String(),
+    'completedDate': completedDate?.toIso8601String(),
     'listId': listId,
     'order': order,
+    'snoozeDuration': snoozeDuration,
     'pageOrder': pageOrder.map((key, value) => MapEntry(key, value.toString())),
     'repeatOption': null,
   };
@@ -72,6 +78,8 @@ class Task {
       hasNotified: (json['hasNotified'] as int? ?? 0) == 1,
       isFavorite: (json['isFavorite'] as int? ?? 0) == 1,
       isImportant: (json['isImportant'] as int? ?? 0) == 1,
+      completedDate: json['completedDate'] != null ? DateTime.tryParse(json['completedDate'] as String) : null,
+      snoozeDuration: json['snoozeDuration'] as int?,
       addedDate: json['addedDate'] != null
           ? DateTime.tryParse(json['addedDate'] as String) ?? DateTime.now()
           : DateTime.now(),
@@ -107,7 +115,9 @@ class Task {
     bool? isFavorite,
     bool? isImportant,
     DateTime? addedDate,
+    DateTime? completedDate,
     String? listId,
+    int? snoozeDuration,
     int? order,
     Map<String, int>? pageOrder,
   }) {
@@ -121,7 +131,9 @@ class Task {
       isFavorite: isFavorite ?? this.isFavorite,
       isImportant: isImportant ?? this.isImportant,
       addedDate: addedDate ?? this.addedDate,
+      completedDate: completedDate ?? this.completedDate,
       listId: listId ?? this.listId,
+      snoozeDuration: snoozeDuration ?? this.snoozeDuration,
       order: order ?? this.order,
       pageOrder: pageOrder ?? Map.from(this.pageOrder),
     );

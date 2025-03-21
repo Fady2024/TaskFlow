@@ -34,10 +34,34 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     AndroidInitializationSettings('@mipmap/ic_launcher');
     const InitializationSettings initializationSettings =
     InitializationSettings(android: initializationSettingsAndroid);
+
     await _notificationsPlugin.initialize(
       initializationSettings,
-      onDidReceiveNotificationResponse: (NotificationResponse response) {
-        print('Notification received with payload: ${response.payload}');
+      onDidReceiveNotificationResponse: (NotificationResponse response) async {
+        print('Notification action received: actionId=${response.actionId}, payload=${response.payload}');
+        if (response.actionId == null || response.payload == null) {
+          print('Invalid action or payload: actionId=${response.actionId}, payload=${response.payload}');
+          return;
+        }
+
+        try {
+          final taskId = response.payload!;
+          final task = _tasks.firstWhere((t) => t.id == taskId, orElse: () => throw Exception('Task not found: $taskId'));
+          int snoozeMinutes = response.actionId == 'snooze_5' ? 5 : 15;
+          final newDueDate = tz.TZDateTime.now(tz.local).add(Duration(minutes: snoozeMinutes));
+          final updatedTask = task.copyWith(
+            snoozeDuration: snoozeMinutes,
+            dueDate: newDueDate,
+          );
+          print('Snooze action triggered for task "${task.title}": ${response.actionId}, new due date: $newDueDate');
+
+          await _cancelNotification(taskId);
+          await _taskService.saveTask(updatedTask, updatedTask.listId);
+          await _scheduleNotification(updatedTask);
+          add(UpdateTask(updatedTask));
+        } catch (e) {
+          print('Error handling snooze action: $e');
+        }
       },
     );
 
@@ -69,8 +93,8 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
   }
 
   void _setupMidnightReset() {
-    final now = DateTime.now();
-    final midnight = DateTime(now.year, now.month, now.day + 1, 0, 0);
+    final now = tz.TZDateTime.now(tz.local);
+    final midnight = tz.TZDateTime(tz.local, now.year, now.month, now.day + 1, 0, 0);
     final durationUntilMidnight = midnight.difference(now);
 
     _midnightResetTimer = Timer(durationUntilMidnight, () {
@@ -82,8 +106,8 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
   Future<void> _resetMyDayTasks() async {
     print('Resetting My Day tasks at midnight');
     bool tasksUpdated = false;
-    final now = DateTime.now();
-    final midnight = DateTime(now.year, now.month, now.day, 0, 0);
+    final now = tz.TZDateTime.now(tz.local);
+    final midnight = tz.TZDateTime(tz.local, now.year, now.month, now.day, 0, 0);
 
     for (var task in _tasks.where((t) => t.isInMyDay() && !t.isCompleted)) {
       final updatedTask = task.copyWith(addedDate: DateTime(2000));
@@ -119,11 +143,14 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
 
   Future<void> _checkOverdueTasks() async {
     final now = tz.TZDateTime.now(tz.local);
-    print('Checking overdue tasks at $now');
+    print('Checking overdue tasks at $now (local time, ${tz.local.name})');
+
     bool tasksUpdated = false;
 
     for (var task in _tasks.where((t) => !t.isCompleted && t.dueDate != null)) {
-      final dueDateTz = tz.TZDateTime.from(task.dueDate!, tz.local);
+      print('Raw dueDate for "${task.title}": ${task.dueDate}');
+      final dueDateTz = tz.TZDateTime.from(task.dueDate!.toUtc(), tz.local);
+      print('Task "${task.title}" due at $dueDateTz (local time, ${tz.local.name}), Current time: $now');
       if (dueDateTz.isBefore(now)) {
         print('Task "${task.title}" is overdue. Due: $dueDateTz, Current: $now. Clearing due date.');
         await _cancelNotification(task.id);
@@ -131,7 +158,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
           task.id.hashCode,
           'Task Overdue',
           'Your task "${task.title}" is overdue! Due date has been removed.',
-          const NotificationDetails(
+          NotificationDetails(
             android: AndroidNotificationDetails(
               'task_channel',
               'Task Notifications',
@@ -139,10 +166,15 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
               importance: Importance.max,
               priority: Priority.high,
               playSound: true,
-              sound: RawResourceAndroidNotificationSound('notification_sound'),
+              sound: const RawResourceAndroidNotificationSound('notification_sound'),
               enableVibration: true,
+              actions: [
+                const AndroidNotificationAction('snooze_5', 'Snooze 5 min'),
+                const AndroidNotificationAction('snooze_15', 'Snooze 15 min'),
+              ],
             ),
           ),
+          payload: task.id,
         );
         final updatedTask = task.copyWith(dueDate: null);
         final index = _tasks.indexWhere((t) => t.id == task.id);
@@ -164,12 +196,15 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
       return;
     }
 
-    final tzDateTime = tz.TZDateTime.from(task.dueDate!, tz.local);
+    print('Raw dueDate for "${task.title}": ${task.dueDate}, snoozeDuration: ${task.snoozeDuration}');
+    final tzDateTime = tz.TZDateTime.from(task.dueDate!.toUtc(), tz.local);
     final now = tz.TZDateTime.now(tz.local);
 
-    if (_notificationCache[task.id] == true) {
-      print('Notification already scheduled for task "${task.title}"');
-      return;
+    print('Task "${task.title}" due at $tzDateTime (local time, ${tz.local.name}), Current time: $now');
+
+    if (_notificationCache.containsKey(task.id)) {
+      print('Cancelling existing notification for task "${task.title}" to reschedule');
+      await _cancelNotification(task.id);
     }
 
     if (tzDateTime.isBefore(now)) {
@@ -178,7 +213,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
         task.id.hashCode,
         'Task Overdue',
         'Your task "${task.title}" is overdue! Due date has been removed.',
-        const NotificationDetails(
+        NotificationDetails(
           android: AndroidNotificationDetails(
             'task_channel',
             'Task Notifications',
@@ -186,22 +221,25 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
             importance: Importance.max,
             priority: Priority.high,
             playSound: true,
-            sound: RawResourceAndroidNotificationSound('notification_sound'),
+            sound: const RawResourceAndroidNotificationSound('notification_sound'),
             enableVibration: true,
+            actions: [
+              const AndroidNotificationAction('snooze_5', 'Snooze 5 min'),
+              const AndroidNotificationAction('snooze_15', 'Snooze 15 min'),
+            ],
           ),
         ),
+        payload: task.id,
       );
-      final updatedTask = task.copyWith(dueDate: null);
-      await _taskService.saveTask(updatedTask, task.listId);
-      add(UpdateTask(updatedTask));
+      _notificationCache[task.id] = true;
     } else {
-      print('Scheduling notification for task "${task.title}" at $tzDateTime');
+      print('Scheduling notification for task "${task.title}" at $tzDateTime with snoozeDuration: ${task.snoozeDuration}');
       await _notificationsPlugin.zonedSchedule(
         task.id.hashCode,
         'Task Due',
-        'Your task "${task.title}" is due now!',
+        'Your task "${task.title ?? 'Untitled'}" is due now!',
         tzDateTime,
-        const NotificationDetails(
+        NotificationDetails(
           android: AndroidNotificationDetails(
             'task_channel',
             'Task Notifications',
@@ -209,12 +247,17 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
             importance: Importance.max,
             priority: Priority.high,
             playSound: true,
-            sound: RawResourceAndroidNotificationSound('notification_sound'),
+            sound: const RawResourceAndroidNotificationSound('notification_sound'),
             enableVibration: true,
+            actions: [
+              const AndroidNotificationAction('snooze_5', 'Snooze 5 min'),
+              const AndroidNotificationAction('snooze_15', 'Snooze 15 min'),
+            ],
           ),
         ),
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         matchDateTimeComponents: DateTimeComponents.time,
+        payload: task.id,
       );
       _notificationCache[task.id] = true;
     }
@@ -373,7 +416,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     try {
       final index = _tasks.indexWhere((t) => t.id == event.task.id);
       if (index != -1) {
-        final now = DateTime.now();
+        final now = tz.TZDateTime.now(tz.local);
         final newAddedDate = event.task.isInMyDay()
             ? DateTime(2000)
             : DateTime(now.year, now.month, now.day, now.hour, now.minute);
@@ -402,12 +445,14 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
       final currentTask = _tasks[index];
       if (currentTask.isCompleted == event.task.isCompleted) return;
 
+      final now = tz.TZDateTime.now(tz.local);
       final updatedTask = currentTask.copyWith(
         isCompleted: !currentTask.isCompleted,
         dueDate: null,
+        completedDate: !currentTask.isCompleted ? now : null,
       );
 
-      print('Before updating task "${updatedTask.title}": isCompleted: ${updatedTask.isCompleted}, dueDate: ${updatedTask.dueDate}');
+      print('Before updating task "${updatedTask.title}": isCompleted: ${updatedTask.isCompleted}, dueDate: ${updatedTask.dueDate}, completedDate: ${updatedTask.completedDate}');
 
       _tasks[index] = updatedTask;
       emit(TasksLoaded(List.from(_tasks)));
@@ -417,15 +462,15 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
         final completedTask = updatedTask.copyWith(dueDate: null);
         await _taskService.saveCompletedTask(completedTask);
         await _taskService.deleteTask(updatedTask.id, updatedTask.listId);
-        print('Task "${completedTask.title}" marked as completed, dueDate cleared: ${completedTask.dueDate}');
+        print('Task "${completedTask.title}" marked as completed, dueDate cleared: ${completedTask.dueDate}, completedDate: ${completedTask.completedDate}');
       } else {
         final activeTask = updatedTask.copyWith(dueDate: null);
         await _taskService.saveTask(activeTask, activeTask.listId);
         await _taskService.deleteCompletedTask(activeTask.id);
-        print('Task "${activeTask.title}" unmarked as completed, dueDate reset to: ${activeTask.dueDate}');
+        print('Task "${activeTask.title}" unmarked as completed, dueDate reset to: ${activeTask.dueDate}, completedDate: ${activeTask.completedDate}');
       }
 
-      print('Toggled complete for task: ${updatedTask.title} (completed: ${updatedTask.isCompleted}, dueDate: ${updatedTask.dueDate})');
+      print('Toggled complete for task: ${updatedTask.title} (completed: ${updatedTask.isCompleted}, dueDate: ${updatedTask.dueDate}, completedDate: ${updatedTask.completedDate})');
     } catch (e) {
       print('Toggle complete error: $e');
       emit(TaskError('Failed to toggle complete: $e'));

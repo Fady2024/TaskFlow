@@ -10,11 +10,11 @@ import 'planned_screen.dart';
 import 'favorite_screen.dart';
 import 'tasks_screen.dart';
 import 'task_list_screen.dart';
-import 'account_settings_screen.dart';
+import 'productivity_analytics_screen.dart';
+import 'pomodoro_timer_screen.dart';
 import '../services/task_service.dart';
 import '../blocs/task/task_bloc.dart';
 import '../blocs/task/task_event.dart';
-import '../blocs/task/task_state.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -106,7 +106,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
           final newList = {'id': listId, 'name': name};
           setState(() {
             _customLists.add(newList);
-            _selectedIndex = 5 + _customLists.length - 1;
+            _selectedIndex = 8 + _customLists.length - 1;
             _controller.forward(from: 0);
             print('Added new list: $newList, updated customLists: $_customLists');
           });
@@ -153,7 +153,7 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
         }
         await _taskService.deleteTaskList(listId);
         setState(() {
-          _customLists.removeAt(index - 5);
+          _customLists.removeAt(index - 8);
           _selectedIndex = 0;
           print('Deleted list $listId, updated customLists: $_customLists, selectedIndex: $_selectedIndex');
         });
@@ -191,17 +191,20 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
     final screens = [
       const MyDayScreen(),
       const ImportantScreen(),
       const PlannedScreen(),
       const FavoriteScreen(),
       const TasksScreen(),
+      const ProductivityAnalyticsScreen(type: 'overview'),
+      const PomodoroTimerScreen(),
+      const ProductivityAnalyticsScreen(type: 'completion'),
+      const ProductivityAnalyticsScreen(type: 'progress'),
       ..._customLists.map((list) => TaskListScreen(
         listId: list['id'] as String,
         listName: list['name'] as String,
-        onDelete: () => _deleteList(list['id'] as String, 5 + _customLists.indexOf(list)),
+        onDelete: () => _deleteList(list['id'] as String, 9 + _customLists.indexOf(list)),
       )),
     ];
 
@@ -259,7 +262,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
   }
 
   PreferredSizeWidget _buildAppBar() {
-    final theme = Theme.of(context);
     return AppBar(
       title: Text('TaskFlow',
           style: GoogleFonts.poppins(
@@ -288,13 +290,6 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                 ),
               ),
           ],
-        ),
-        IconButton(
-          icon: const Icon(Icons.settings_outlined, color: Colors.white),
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const AccountSettingsScreen()),
-          ),
         ),
       ],
     );

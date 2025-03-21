@@ -9,6 +9,7 @@ import 'screens/main_screen.dart';
 import 'theme_provider.dart';
 import 'blocs/task/task_bloc.dart';
 import 'blocs/task/task_event.dart';
+import 'blocs/pomodoro/pomodoro_bloc.dart';
 import 'services/task_service.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'screens/splash_screen.dart';
@@ -16,7 +17,6 @@ import 'screens/splash_screen.dart';
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
 Future<void> initializeNotifications() async {
-  tz.initializeTimeZones();
   const AndroidInitializationSettings initializationSettingsAndroid =
   AndroidInitializationSettings('@mipmap/ic_launcher');
   const InitializationSettings initializationSettings =
@@ -64,9 +64,14 @@ Future<void> setInitialized() async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   tz.initializeTimeZones();
-  tz.setLocalLocation(tz.getLocation('Africa/Cairo'));
+  final location = tz.getLocation('Africa/Cairo');
+  tz.setLocalLocation(location);
+  print('Local time zone set to: ${tz.local.name}');
+  print('Local time zone offset: ${tz.local.currentTimeZone.offset / 1000 / 60 / 60} hours');
+  print('Current local time: ${tz.TZDateTime.now(tz.local)}');
+
+  await initializeNotifications();
 
   final bool shouldInitialize = await needsInitialization();
 
@@ -74,7 +79,8 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        BlocProvider(create: (_) => TaskBloc(TaskService())),
+        BlocProvider(create: (_) => TaskBloc(TaskService())..add(LoadTasks())),
+        BlocProvider(create: (_) => PomodoroBloc()),
       ],
       child: MyApp(shouldInitialize: shouldInitialize),
     ),

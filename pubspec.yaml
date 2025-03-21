@@ -44,6 +44,8 @@ dependencies:
   sliver_tools: ^0.2.12 # Latest
   reorderables: ^0.6.0 # Latest
   flutter_local_notifications: ^19.0.0
+  fl_chart: ^0.68.0
+  audioplayers: ^5.2.0
 
 dev_dependencies:
   flutter_test:
@@ -61,6 +63,7 @@ flutter:
     - images/
     - android/app/src/main/res/raw/notification_sound.mp3
     - assets/icons/MyAppIcon.png
+    - assets/sounds/pomodoro_end.mp3
 
 flutter_launcher_icons:
   android: true
