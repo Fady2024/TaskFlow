@@ -64,6 +64,67 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
     super.dispose();
   }
 
+  Future<void> _selectDueDate() async {
+    final now = tz.TZDateTime.now(tz.local);
+    final today = DateTime(now.year, now.month, now.day);
+
+    // Show date picker with firstDate set to today
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: _dueDate != null && _dueDate!.isAfter(now) ? _dueDate!.toLocal() : now.toLocal(),
+      firstDate: today, // Restrict to today or future
+      lastDate: DateTime(2030),
+      selectableDayPredicate: (DateTime date) {
+        // Prevent selecting dates before today
+        return !date.isBefore(today);
+      },
+    );
+
+    if (pickedDate != null) {
+      // Determine the initial time for the time picker
+      TimeOfDay initialTime;
+      if (_dueDate != null && _dueDate!.isAfter(now)) {
+        initialTime = TimeOfDay.fromDateTime(_dueDate!);
+      } else {
+        initialTime = TimeOfDay.fromDateTime(now);
+      }
+
+      // Show time picker
+      final pickedTime = await showTimePicker(
+        context: context,
+        initialTime: initialTime,
+      );
+
+      if (pickedTime != null && mounted) {
+        // Construct the selected date and time
+        final selectedDateTime = tz.TZDateTime.local(
+          pickedDate.year,
+          pickedDate.month,
+          pickedDate.day,
+          pickedTime.hour,
+          pickedTime.minute,
+        );
+
+        // If the selected date is today, ensure the time is not in the past
+        if (pickedDate.isAtSameMomentAs(today) && selectedDateTime.isBefore(now)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Please select a time in the future for today.',
+                style: GoogleFonts.poppins(),
+              ),
+            ),
+          );
+          return;
+        }
+
+        setState(() {
+          _dueDate = selectedDateTime;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -144,31 +205,7 @@ class _TaskEditScreenState extends State<TaskEditScreen> {
                     style: GoogleFonts.poppins(),
                   ),
                   trailing: const Icon(Icons.calendar_today_outlined, color: Color(0xFFFF6F61)),
-                  onTap: () async {
-                    final pickedDate = await showDatePicker(
-                      context: context,
-                      initialDate: _dueDate ?? DateTime.now(),
-                      firstDate: DateTime(2000),
-                      lastDate: DateTime(2030),
-                    );
-                    if (pickedDate != null) {
-                      final pickedTime = await showTimePicker(
-                        context: context,
-                        initialTime: TimeOfDay.fromDateTime(_dueDate ?? DateTime.now()),
-                      );
-                      if (pickedTime != null && mounted) {
-                        setState(() {
-                          _dueDate = tz.TZDateTime.local(
-                            pickedDate.year,
-                            pickedDate.month,
-                            pickedDate.day,
-                            pickedTime.hour,
-                            pickedTime.minute,
-                          );
-                        });
-                      }
-                    }
-                  },
+                  onTap: _selectDueDate, // Use the new method
                 ),
               ),
               if (_dueDate != null) ...[
