@@ -92,23 +92,201 @@ class TaskCard extends StatelessWidget {
 
     return Dismissible(
       key: ValueKey('${task.id}_${task.isCompleted}'),
+      behavior: HitTestBehavior.opaque,
+      direction: DismissDirection.horizontal,
+      dismissThresholds: const {
+        DismissDirection.startToEnd: 0.4,
+        DismissDirection.endToStart: 0.4,
+      },
       background: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(colors: [theme.colorScheme.primary.withOpacity(0.8), theme.colorScheme.primary]),
+          gradient: LinearGradient(
+            colors: task.isCompleted
+                ? [Colors.grey.withOpacity(0.7), Colors.grey.withOpacity(0.9)]
+                : [theme.colorScheme.primary.withOpacity(0.7), theme.colorScheme.primary.withOpacity(0.9)],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
           borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: task.isCompleted ? Colors.grey.withOpacity(0.3) : theme.colorScheme.primary.withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        alignment: Alignment.centerLeft,
-        padding: const EdgeInsets.only(left: 16),
-        child: Icon(Icons.check_circle, color: Colors.white),
+        padding: const EdgeInsets.only(left: 20),
+        child: Row(
+          children: [
+            Icon(
+              task.isCompleted ? Icons.undo : Icons.check_circle,
+              color: Colors.white,
+              size: 28,
+            ),
+            const SizedBox(width: 10),
+            Text(
+              task.isCompleted ? 'Undo' : 'Mark Done',
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                shadows: [
+                  Shadow(
+                    color: Colors.black.withOpacity(0.2),
+                    offset: const Offset(1, 1),
+                    blurRadius: 2,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
       secondaryBackground: Container(
         decoration: BoxDecoration(
-          gradient: const LinearGradient(colors: [Colors.redAccent, Colors.red]),
+          gradient: const LinearGradient(
+            colors: [Colors.redAccent, Colors.red],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
           borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.red.withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 16),
-        child: const Icon(Icons.delete, color: Colors.white),
+        padding: const EdgeInsets.only(right: 20),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Text(
+              'Delete',
+              style: GoogleFonts.poppins(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                shadows: [
+                  Shadow(
+                    color: Colors.black.withOpacity(0.2),
+                    offset: const Offset(1, 1),
+                    blurRadius: 2,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Icon(Icons.delete, color: Colors.white, size: 28),
+          ],
+        ),
+      ),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        transform: Matrix4.identity()..scale(task.isCompleted ? 0.98 : 1.0),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  theme.colorScheme.surface.withOpacity(task.isCompleted ? 0.6 : 0.8),
+                  theme.colorScheme.surface.withOpacity(task.isCompleted ? 0.8 : 1.0),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: isOverdue ? Border.all(color: Colors.redAccent, width: 2) : null,
+            ),
+            child: InkWell(
+              onTap: () async {
+                final updatedTask = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => TaskEditScreen(task: task)),
+                );
+                if (updatedTask != null) {
+                  context.read<TaskBloc>().add(UpdateTask(updatedTask));
+                  await _cancelNotification(task);
+                  await _scheduleNotification(updatedTask, context);
+                }
+              },
+              borderRadius: BorderRadius.circular(16),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                child: Row(
+                  children: [
+                    Checkbox(
+                      value: task.isCompleted,
+                      onChanged: (value) => (onToggleComplete ?? () => _toggleComplete(context))(),
+                      activeColor: theme.colorScheme.onSurface.withOpacity(0.6),
+                      checkColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            task.title,
+                            style: GoogleFonts.poppins(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: task.isCompleted
+                                  ? theme.textTheme.bodySmall?.color?.withOpacity(0.6)
+                                  : theme.textTheme.bodySmall?.color,
+                              decoration: task.isCompleted ? TextDecoration.lineThrough : null,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            task.isCompleted ? 'Completed' : task.getFormattedDueDate(),
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              color: isOverdue
+                                  ? Colors.redAccent
+                                  : theme.textTheme.bodySmall?.color?.withOpacity(task.isCompleted ? 0.6 : 1.0),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        task.isFavorite ? Icons.favorite : Icons.favorite_border,
+                        color: theme.colorScheme.secondary,
+                      ),
+                      onPressed: () => context.read<TaskBloc>().add(ToggleFavorite(task)),
+                    ),
+                    if (showImportantToggle)
+                      IconButton(
+                        icon: Icon(
+                          task.isImportant ? Icons.star : Icons.star_border,
+                          color: const Color(0xFFFFD700),
+                        ),
+                        onPressed: () => context.read<TaskBloc>().add(ToggleImportant(task)),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
       onDismissed: (direction) async {
         if (direction == DismissDirection.startToEnd) {
@@ -126,89 +304,6 @@ class TaskCard extends StatelessWidget {
           );
         }
       },
-      child: Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [theme.colorScheme.surface.withOpacity(0.8), theme.colorScheme.surface],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(16),
-            border: isOverdue ? Border.all(color: Colors.redAccent, width: 2) : null,
-          ),
-          child: InkWell(
-            onTap: () async {
-              final updatedTask = await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => TaskEditScreen(task: task)),
-              );
-              if (updatedTask != null) {
-                context.read<TaskBloc>().add(UpdateTask(updatedTask));
-                await _cancelNotification(task);
-                await _scheduleNotification(updatedTask, context);
-              }
-            },
-            borderRadius: BorderRadius.circular(16),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-              child: Row(
-                children: [
-                  Checkbox(
-                    value: task.isCompleted,
-                    onChanged: (value) => (onToggleComplete ?? () => _toggleComplete(context))(),
-                    activeColor: theme.colorScheme.onSurface.withOpacity(0.6),
-                    checkColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          task.title,
-                          style: GoogleFonts.poppins(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: theme.textTheme.bodySmall?.color,
-                            decoration: task.isCompleted ? TextDecoration.lineThrough : null,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          task.isCompleted ? 'Completed' : task.getFormattedDueDate(),
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            color: isOverdue ? Colors.redAccent : theme.textTheme.bodySmall?.color,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      task.isFavorite ? Icons.favorite : Icons.favorite_border,
-                      color: theme.colorScheme.secondary,
-                    ),
-                    onPressed: () => context.read<TaskBloc>().add(ToggleFavorite(task)),
-                  ),
-                  if (showImportantToggle)
-                    IconButton(
-                      icon: Icon(
-                        task.isImportant ? Icons.star : Icons.star_border,
-                        color: const Color(0xFFFFD700),
-                      ),
-                      onPressed: () => context.read<TaskBloc>().add(ToggleImportant(task)),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

@@ -35,10 +35,7 @@ class ProductivityAnalyticsScreen extends StatelessWidget {
             padding: const EdgeInsets.all(20.0),
             child: BlocBuilder<TaskBloc, TaskState>(
               builder: (context, state) {
-                // Extract tasks from the state, default to empty list if state is not TasksLoaded
                 final tasks = state is TasksLoaded ? state.tasks : <Task>[];
-
-                // Check if tasks list is empty
                 if (tasks.isEmpty) {
                   return Center(
                     child: Column(
@@ -70,7 +67,6 @@ class ProductivityAnalyticsScreen extends StatelessWidget {
                         const SizedBox(height: 20),
                         ElevatedButton(
                           onPressed: () {
-                            // Navigate to the task creation screen
                             Navigator.push(
                               context,
                               MaterialPageRoute(builder: (context) => const TaskEditScreen()),
@@ -96,7 +92,6 @@ class ProductivityAnalyticsScreen extends StatelessWidget {
                   );
                 }
 
-                // Logic for when tasks are available
                 final completedTasks = tasks.where((t) => t.isCompleted).length;
                 final totalTasks = tasks.length;
                 final completionRate = totalTasks > 0 ? (completedTasks / totalTasks * 100) : 0.0;
