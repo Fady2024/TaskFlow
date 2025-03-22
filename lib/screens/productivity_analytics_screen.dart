@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:new_app/screens/task_edit_screen.dart';
 import 'package:provider/provider.dart';
 import '../blocs/task/task_bloc.dart';
 import '../blocs/task/task_state.dart';
 import '../theme_provider.dart';
 import '../models/task.dart';
 import 'dart:math' as math;
-
 
 class ProductivityAnalyticsScreen extends StatelessWidget {
   final String type;
@@ -35,57 +35,115 @@ class ProductivityAnalyticsScreen extends StatelessWidget {
             padding: const EdgeInsets.all(20.0),
             child: BlocBuilder<TaskBloc, TaskState>(
               builder: (context, state) {
-                if (state is TasksLoaded) {
-                  final tasks = state.tasks;
-                  final completedTasks = tasks.where((t) => t.isCompleted).length;
-                  final totalTasks = tasks.length;
-                  final completionRate = totalTasks > 0 ? (completedTasks / totalTasks * 100) : 0.0;
+                // Extract tasks from the state, default to empty list if state is not TasksLoaded
+                final tasks = state is TasksLoaded ? state.tasks : <Task>[];
 
-                  return SingleChildScrollView(
+                // Check if tasks list is empty
+                if (tasks.isEmpty) {
+                  return Center(
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        ShaderMask(
-                          shaderCallback: (bounds) => const LinearGradient(
-                            colors: [Color(0xFF6C5CE7), Color(0xFF00B4D8)],
-                          ).createShader(bounds),
+                        Icon(
+                          Icons.task_alt,
+                          size: 80,
+                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                        ),
+                        const SizedBox(height: 20),
+                        Text(
+                          'No tasks yet!',
+                          style: GoogleFonts.poppins(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : const Color(0xFF2D3436),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          'Add some tasks to see your productivity stats.',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.poppins(
+                            fontSize: 16,
+                            color: isDark ? Colors.grey.shade300 : const Color(0xFF7A869A),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        ElevatedButton(
+                          onPressed: () {
+                            // Navigate to the task creation screen
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const TaskEditScreen()),
+                            );                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF6C5CE7),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                          ),
                           child: Text(
-                            type == 'completion'
-                                ? 'Task Completion Rate'
-                                : type == 'progress'
-                                ? 'Daily/Weekly Progress'
-                                : 'Productivity Overview',
+                            'Add a Task',
                             style: GoogleFonts.poppins(
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
                               color: Colors.white,
                             ),
                           ),
                         ),
-                        const SizedBox(height: 30),
-                        if (type == 'completion' || type == 'overview')
-                          _buildCompletionCard(
-                            isDark: isDark,
-                            completionRate: completionRate,
-                            completedTasks: completedTasks,
-                            totalTasks: totalTasks,
-                          ),
-                        if (type == 'progress' || type == 'overview')
-                          _buildProgressCard(
-                            isDark: isDark,
-                            tasks: tasks,
-                          ),
-                        const SizedBox(height: 20),
-                        if (type == 'progress' || type == 'overview')
-                          _buildWeeklyOverviewCard(
-                            isDark: isDark,
-                            tasks: tasks,
-                          ),
                       ],
                     ),
                   );
                 }
-                return const Center(child: CircularProgressIndicator());
+
+                // Logic for when tasks are available
+                final completedTasks = tasks.where((t) => t.isCompleted).length;
+                final totalTasks = tasks.length;
+                final completionRate = totalTasks > 0 ? (completedTasks / totalTasks * 100) : 0.0;
+
+                return SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ShaderMask(
+                        shaderCallback: (bounds) => const LinearGradient(
+                          colors: [Color(0xFF6C5CE7), Color(0xFF00B4D8)],
+                        ).createShader(bounds),
+                        child: Text(
+                          type == 'completion'
+                              ? 'Task Completion Rate'
+                              : type == 'progress'
+                              ? 'Daily/Weekly Progress'
+                              : 'Productivity Overview',
+                          style: GoogleFonts.poppins(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 30),
+                      if (type == 'completion' || type == 'overview')
+                        _buildCompletionCard(
+                          isDark: isDark,
+                          completionRate: completionRate,
+                          completedTasks: completedTasks,
+                          totalTasks: totalTasks,
+                        ),
+                      if (type == 'progress' || type == 'overview')
+                        _buildProgressCard(
+                          isDark: isDark,
+                          tasks: tasks,
+                        ),
+                      const SizedBox(height: 20),
+                      if (type == 'progress' || type == 'overview')
+                        _buildWeeklyOverviewCard(
+                          isDark: isDark,
+                          tasks: tasks,
+                        ),
+                    ],
+                  ),
+                );
               },
             ),
           ),
