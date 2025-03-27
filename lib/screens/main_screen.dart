@@ -9,10 +9,10 @@ import '../features/task/screens/tasks_screen.dart';
 import '../features/user/screens/important_screen.dart';
 import '../features/user/screens/my_day_screen.dart';
 import '../features/user/screens/planned_screen.dart';
+import '../features/user/screens/favorite_screen.dart';
 import '../main.dart';
 import '../core/widgets/sidebar.dart';
 import '../features/settings/screens/account_settings_screen.dart';
-import '../features/user/screens/favorite_screen.dart';
 import '../features/productivity/screens/productivity_analytics_screen.dart';
 import '../features/pomodoro/screens/pomodoro_timer_screen.dart';
 import '../core/services/task_service.dart';
@@ -85,9 +85,9 @@ class _MainScreenState extends State<MainScreen>
     setState(() {
       _notificationCount = tasks
           .where((task) =>
-              task.dueDate != null &&
-              task.dueDate!.isBefore(DateTime.now()) &&
-              !task.hasNotified)
+      task.dueDate != null &&
+          task.dueDate!.isBefore(DateTime.now()) &&
+          !task.hasNotified)
           .length;
       print('Notification count: $_notificationCount');
     });
@@ -149,7 +149,7 @@ class _MainScreenState extends State<MainScreen>
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             child:
-                Text('Delete', style: GoogleFonts.poppins(color: Colors.red)),
+            Text('Delete', style: GoogleFonts.poppins(color: Colors.red)),
           ),
         ],
       ),
@@ -215,7 +215,24 @@ class _MainScreenState extends State<MainScreen>
     await prefs.setBool('isGuest', false);
     context.read<TaskBloc>().add(LoadTasks());
     Navigator.pushReplacement(
-        context, MaterialPageRoute(builder: (_) => const AuthScreen()));
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+        const AuthScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(1.0, 0.0);
+          const end = Offset.zero;
+          const curve = Curves.easeInOut;
+          var tween =
+          Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+          return SlideTransition(
+            position: animation.drive(tween),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 300),
+      ),
+    );
   }
 
   @override
@@ -231,11 +248,11 @@ class _MainScreenState extends State<MainScreen>
       const ProductivityAnalyticsScreen(type: 'completion'),
       const ProductivityAnalyticsScreen(type: 'progress'),
       ..._customLists.map((list) => TaskListScreen(
-            listId: list['id'] as String,
-            listName: list['name'] as String,
-            onDelete: () => _deleteList(
-                list['id'] as String, 9 + _customLists.indexOf(list)),
-          )),
+        listId: list['id'] as String,
+        listName: list['name'] as String,
+        onDelete: () => _deleteList(
+            list['id'] as String, 9 + _customLists.indexOf(list)),
+      )),
     ];
 
     return Scaffold(
@@ -244,22 +261,22 @@ class _MainScreenState extends State<MainScreen>
       drawer: _isDrawerPinned
           ? null
           : Drawer(
-              width: _isDrawerExpanded ? 280 : 80,
-              elevation: 8,
-              child: SafeArea(
-                child: Sidebar(
-                  selectedIndex: _selectedIndex,
-                  onItemTapped: _onItemTapped,
-                  customLists: _customLists,
-                  onAddNewList: _addNewList,
-                  onDeleteList: _deleteList,
-                  isDrawerExpanded: _isDrawerExpanded,
-                  isDrawerPinned: _isDrawerPinned,
-                  onTogglePin: _togglePin,
-                  onToggleExpansion: _toggleDrawerSize,
-                ),
-              ),
-            ),
+        width: _isDrawerExpanded ? 280 : 80,
+        elevation: 8,
+        child: SafeArea(
+          child: Sidebar(
+            selectedIndex: _selectedIndex,
+            onItemTapped: _onItemTapped,
+            customLists: _customLists,
+            onAddNewList: _addNewList,
+            onDeleteList: _deleteList,
+            isDrawerExpanded: _isDrawerExpanded,
+            isDrawerPinned: _isDrawerPinned,
+            onTogglePin: _togglePin,
+            onToggleExpansion: _toggleDrawerSize,
+          ),
+        ),
+      ),
       body: SafeArea(
         child: Row(
           children: [
@@ -280,8 +297,20 @@ class _MainScreenState extends State<MainScreen>
                 ),
               ),
             Expanded(
-              child: FadeTransition(
-                opacity: _drawerAnimation,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 500),
+                transitionBuilder: (Widget child, Animation<double> animation) {
+                  return SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(1.0, 0.0),
+                      end: Offset.zero,
+                    ).animate(CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeInOut,
+                    )),
+                    child: child,
+                  );
+                },
                 child: screens[_selectedIndex],
               ),
             ),
@@ -304,13 +333,12 @@ class _MainScreenState extends State<MainScreen>
       elevation: 4,
       shadowColor: Colors.black.withOpacity(0.3),
       actions: [
-
         Stack(
           clipBehavior: Clip.none,
           children: [
             IconButton(
               icon:
-                  const Icon(Icons.notifications_outlined, color: Colors.white),
+              const Icon(Icons.notifications_outlined, color: Colors.white),
               onPressed: () => setState(() => _notificationCount = 0),
             ),
             if (_notificationCount > 0)
@@ -332,8 +360,23 @@ class _MainScreenState extends State<MainScreen>
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                  builder: (context) => const AccountSettingsScreen()),
+              PageRouteBuilder(
+                pageBuilder: (context, animation, secondaryAnimation) =>
+                const AccountSettingsScreen(),
+                transitionsBuilder:
+                    (context, animation, secondaryAnimation, child) {
+                  const begin = Offset(1.0, 0.0);
+                  const end = Offset.zero;
+                  const curve = Curves.easeInOut;
+                  var tween =
+                  Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                  return SlideTransition(
+                    position: animation.drive(tween),
+                    child: child,
+                  );
+                },
+                transitionDuration: const Duration(milliseconds: 300),
+              ),
             );
           },
         ),

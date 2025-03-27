@@ -310,7 +310,7 @@ class _SidebarState extends State<Sidebar> {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeInOut,
-      margin: const EdgeInsets.only(left: 32, right: 8, top: 2,bottom: 2),
+      margin: const EdgeInsets.only(left: 32, right: 8, top: 2, bottom: 2),
       decoration: BoxDecoration(
         color: widget.selectedIndex == index ? color.withOpacity(0.2) : Colors.transparent,
         borderRadius: BorderRadius.circular(12),
