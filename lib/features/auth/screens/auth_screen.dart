@@ -26,6 +26,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final _usernameController = TextEditingController();
   bool _isLogin = true;
   bool _isLoading = false;
+  bool _obscurePassword = true;
   String? _error;
   File? _profileImage;
   final ImagePicker _picker = ImagePicker();
@@ -180,6 +181,27 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
+  Future<void> _forgotPassword() async {
+    if (_emailController.text.isEmpty) {
+      setState(() => _error = 'Please enter your email first');
+      return;
+    }
+
+    try {
+      setState(() => _isLoading = true);
+      await supabase.auth.resetPasswordForEmail(_emailController.text.trim());
+      setState(() {
+        _error = 'Password reset email sent. Check your inbox.';
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = 'Error sending reset email: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
@@ -293,12 +315,41 @@ class _AuthScreenState extends State<AuthScreen> {
                           const SizedBox(height: 16),
                           TextField(
                             controller: _passwordController,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Password',
-                              prefixIcon: Icon(Icons.lock_outline),
+                              prefixIcon: const Icon(Icons.lock_outline),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscurePassword
+                                      ? Icons.visibility_off
+                                      : Icons.visibility,
+                                  color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _obscurePassword = !_obscurePassword;
+                                  });
+                                },
+                              ),
                             ),
-                            obscureText: true,
+                            obscureText: _obscurePassword,
                           ),
+                          if (_isLogin) ...[
+                            const SizedBox(height: 8),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: _forgotPassword,
+                                child: Text(
+                                  'Forgot Password?',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 14,
+                                    color: isDarkMode ? Colors.grey[400] : const Color(0xFF5D737E),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                           if (_error != null) ...[
                             const SizedBox(height: 16),
                             Text(
@@ -314,7 +365,6 @@ class _AuthScreenState extends State<AuthScreen> {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
