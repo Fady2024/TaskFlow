@@ -2,19 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../widgets/sidebar.dart';
-import '../theme_provider.dart';
-import 'my_day_screen.dart';
-import 'important_screen.dart';
-import 'planned_screen.dart';
-import 'favorite_screen.dart';
-import 'tasks_screen.dart';
-import 'task_list_screen.dart';
-import 'productivity_analytics_screen.dart';
-import 'pomodoro_timer_screen.dart';
-import '../services/task_service.dart';
-import '../blocs/task/task_bloc.dart';
-import '../blocs/task/task_event.dart';
+import '../features/task/bloc/task_bloc.dart';
+import '../features/task/bloc/task_event.dart';
+import '../features/task/screens/task_list_screen.dart';
+import '../features/task/screens/tasks_screen.dart';
+import '../features/user/screens/important_screen.dart';
+import '../features/user/screens/my_day_screen.dart';
+import '../features/user/screens/planned_screen.dart';
+import '../main.dart';
+import '../core/widgets/sidebar.dart';
+import '../features/settings/screens/account_settings_screen.dart';
+import '../features/user/screens/favorite_screen.dart';
+import '../features/productivity/screens/productivity_analytics_screen.dart';
+import '../features/pomodoro/screens/pomodoro_timer_screen.dart';
+import '../core/services/task_service.dart';
+import '../features/auth/screens/auth_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -23,7 +26,8 @@ class MainScreen extends StatefulWidget {
   State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateMixin {
+class _MainScreenState extends State<MainScreen>
+    with SingleTickerProviderStateMixin {
   late TaskService _taskService;
   late AnimationController _controller;
   late Animation<double> _drawerAnimation;
@@ -80,7 +84,10 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     final tasks = await _taskService.loadTasks();
     setState(() {
       _notificationCount = tasks
-          .where((task) => task.dueDate != null && task.dueDate!.isBefore(DateTime.now()) && !task.hasNotified)
+          .where((task) =>
+              task.dueDate != null &&
+              task.dueDate!.isBefore(DateTime.now()) &&
+              !task.hasNotified)
           .length;
       print('Notification count: $_notificationCount');
     });
@@ -108,7 +115,8 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
             _customLists.add(newList);
             _selectedIndex = 8 + _customLists.length - 1;
             _controller.forward(from: 0);
-            print('Added new list: $newList, updated customLists: $_customLists');
+            print(
+                'Added new list: $newList, updated customLists: $_customLists');
           });
           if (!_isDrawerPinned) Navigator.pop(context);
         } else {
@@ -117,7 +125,9 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
       } catch (e) {
         print('Error adding new list: $e');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error creating list: $e', style: GoogleFonts.poppins())),
+          SnackBar(
+              content: Text('Error creating list: $e',
+                  style: GoogleFonts.poppins())),
         );
       }
     }
@@ -128,7 +138,9 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Delete List', style: GoogleFonts.poppins()),
-        content: Text('Are you sure you want to delete this list and all its tasks?', style: GoogleFonts.poppins()),
+        content: Text(
+            'Are you sure you want to delete this list and all its tasks?',
+            style: GoogleFonts.poppins()),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -136,7 +148,8 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text('Delete', style: GoogleFonts.poppins(color: Colors.red)),
+            child:
+                Text('Delete', style: GoogleFonts.poppins(color: Colors.red)),
           ),
         ],
       ),
@@ -155,12 +168,15 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
         setState(() {
           _customLists.removeAt(index - 8);
           _selectedIndex = 0;
-          print('Deleted list $listId, updated customLists: $_customLists, selectedIndex: $_selectedIndex');
+          print(
+              'Deleted list $listId, updated customLists: $_customLists, selectedIndex: $_selectedIndex');
         });
       } catch (e) {
         print('Error deleting list: $e');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error deleting list: $e', style: GoogleFonts.poppins())),
+          SnackBar(
+              content: Text('Error deleting list: $e',
+                  style: GoogleFonts.poppins())),
         );
       }
     }
@@ -189,6 +205,19 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     });
   }
 
+  Future<void> _logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    final isGuest = prefs.getBool('isGuest') ?? false;
+    if (!isGuest) {
+      await supabase.auth.signOut();
+    }
+    await _taskService.clearAllData();
+    await prefs.setBool('isGuest', false);
+    context.read<TaskBloc>().add(LoadTasks());
+    Navigator.pushReplacement(
+        context, MaterialPageRoute(builder: (_) => const AuthScreen()));
+  }
+
   @override
   Widget build(BuildContext context) {
     final screens = [
@@ -202,10 +231,11 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
       const ProductivityAnalyticsScreen(type: 'completion'),
       const ProductivityAnalyticsScreen(type: 'progress'),
       ..._customLists.map((list) => TaskListScreen(
-        listId: list['id'] as String,
-        listName: list['name'] as String,
-        onDelete: () => _deleteList(list['id'] as String, 9 + _customLists.indexOf(list)),
-      )),
+            listId: list['id'] as String,
+            listName: list['name'] as String,
+            onDelete: () => _deleteList(
+                list['id'] as String, 9 + _customLists.indexOf(list)),
+          )),
     ];
 
     return Scaffold(
@@ -214,22 +244,22 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
       drawer: _isDrawerPinned
           ? null
           : Drawer(
-        width: _isDrawerExpanded ? 280 : 80,
-        elevation: 8,
-        child: SafeArea(
-          child: Sidebar(
-            selectedIndex: _selectedIndex,
-            onItemTapped: _onItemTapped,
-            customLists: _customLists,
-            onAddNewList: _addNewList,
-            onDeleteList: _deleteList,
-            isDrawerExpanded: _isDrawerExpanded,
-            isDrawerPinned: _isDrawerPinned,
-            onTogglePin: _togglePin,
-            onToggleExpansion: _toggleDrawerSize,
-          ),
-        ),
-      ),
+              width: _isDrawerExpanded ? 280 : 80,
+              elevation: 8,
+              child: SafeArea(
+                child: Sidebar(
+                  selectedIndex: _selectedIndex,
+                  onItemTapped: _onItemTapped,
+                  customLists: _customLists,
+                  onAddNewList: _addNewList,
+                  onDeleteList: _deleteList,
+                  isDrawerExpanded: _isDrawerExpanded,
+                  isDrawerPinned: _isDrawerPinned,
+                  onTogglePin: _togglePin,
+                  onToggleExpansion: _toggleDrawerSize,
+                ),
+              ),
+            ),
       body: SafeArea(
         child: Row(
           children: [
@@ -267,16 +297,20 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
           style: GoogleFonts.poppins(
               fontWeight: FontWeight.bold,
               color: Colors.white,
-              shadows: [Shadow(color: Colors.black.withOpacity(0.2), blurRadius: 4)])),
+              shadows: [
+                Shadow(color: Colors.black.withOpacity(0.2), blurRadius: 4)
+              ])),
       backgroundColor: const Color(0xFF6C5CE7),
       elevation: 4,
       shadowColor: Colors.black.withOpacity(0.3),
       actions: [
+
         Stack(
           clipBehavior: Clip.none,
           children: [
             IconButton(
-              icon: const Icon(Icons.notifications_outlined, color: Colors.white),
+              icon:
+                  const Icon(Icons.notifications_outlined, color: Colors.white),
               onPressed: () => setState(() => _notificationCount = 0),
             ),
             if (_notificationCount > 0)
@@ -286,10 +320,22 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
                 child: CircleAvatar(
                   radius: 8,
                   backgroundColor: const Color(0xFFFF6F61),
-                  child: Text('$_notificationCount', style: GoogleFonts.poppins(fontSize: 10, color: Colors.white)),
+                  child: Text('$_notificationCount',
+                      style: GoogleFonts.poppins(
+                          fontSize: 10, color: Colors.white)),
                 ),
-              ),
+              )
           ],
+        ),
+        IconButton(
+          icon: const Icon(Icons.settings, color: Colors.white),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => const AccountSettingsScreen()),
+            );
+          },
         ),
       ],
     );
@@ -300,7 +346,8 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
     final theme = Theme.of(context);
     return AlertDialog(
       title: Text('New List',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: const Color(0xFF6C5CE7))),
+          style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w600, color: const Color(0xFF6C5CE7))),
       content: TextField(
         controller: controller,
         decoration: InputDecoration(
@@ -314,7 +361,9 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text('Cancel', style: GoogleFonts.poppins(color: theme.textTheme.bodyMedium?.color)),
+          child: Text('Cancel',
+              style: GoogleFonts.poppins(
+                  color: theme.textTheme.bodyMedium?.color)),
         ),
         TextButton(
           onPressed: () {
@@ -322,11 +371,14 @@ class _MainScreenState extends State<MainScreen> with SingleTickerProviderStateM
               Navigator.pop(context, controller.text);
             } else {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('List name cannot be empty', style: GoogleFonts.poppins())),
+                SnackBar(
+                    content: Text('List name cannot be empty',
+                        style: GoogleFonts.poppins())),
               );
             }
           },
-          child: Text('Add', style: GoogleFonts.poppins(color: const Color(0xFF6C5CE7))),
+          child: Text('Add',
+              style: GoogleFonts.poppins(color: const Color(0xFF6C5CE7))),
         ),
       ],
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

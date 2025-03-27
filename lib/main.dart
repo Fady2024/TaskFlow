@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:new_app/screens/splash_screen.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:provider/provider.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'screens/main_screen.dart';
-import 'theme_provider.dart';
-import 'blocs/task/task_bloc.dart';
-import 'blocs/task/task_event.dart';
-import 'blocs/pomodoro/pomodoro_bloc.dart';
-import 'services/task_service.dart';
+import 'core/theme/theme_provider.dart';
+import 'features/pomodoro/bloc/pomodoro_bloc.dart';
+import 'core/services/task_service.dart';
 import 'package:timezone/timezone.dart' as tz;
-import 'screens/splash_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'features/auth/screens/auth_screen.dart';
+import 'features/task/bloc/task_bloc.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
@@ -62,6 +62,16 @@ Future<void> setInitialized() async {
   await prefs.setBool('isInitialized', true);
 }
 
+Future<bool> isGuestUser() async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getBool('isGuest') ?? false;
+}
+
+Future<void> setGuestUser(bool isGuest) async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool('isGuest', isGuest);
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   tz.initializeTimeZones();
@@ -71,26 +81,30 @@ void main() async {
   print('Local time zone offset: ${tz.local.currentTimeZone.offset / 1000 / 60 / 60} hours');
   print('Current local time: ${tz.TZDateTime.now(tz.local)}');
 
-  await initializeNotifications();
+  await Supabase.initialize(
+    url: 'https://dcwijmijkacnypjwpaws.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjd2lqbWlqa2FjbnlwandwYXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI5MjExMjEsImV4cCI6MjA1ODQ5NzEyMX0.TgmEq4ON4Vz13Mm_-hJBjha1BSLIX616xmzSMN270Lg',
+  );
 
-  final bool shouldInitialize = await needsInitialization();
+  final initialSession = supabase.auth.currentSession;
+  print('Initial session: ${initialSession != null ? "User logged in: ${initialSession.user.email}" : "No user logged in"}');
 
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        BlocProvider(create: (_) => TaskBloc(TaskService())..add(LoadTasks())),
+        BlocProvider(create: (_) => TaskBloc(TaskService())),
         BlocProvider(create: (_) => PomodoroBloc()),
       ],
-      child: MyApp(shouldInitialize: shouldInitialize),
+      child: const MyApp(),
     ),
   );
 }
 
-class MyApp extends StatelessWidget {
-  final bool shouldInitialize;
+SupabaseClient get supabase => Supabase.instance.client;
 
-  const MyApp({super.key, required this.shouldInitialize});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -202,7 +216,7 @@ class MyApp extends StatelessWidget {
         ),
       ),
       themeMode: themeProvider.themeMode,
-      home: shouldInitialize ? const SplashScreen() : const MainScreen(),
+      home: const SplashScreen(),
     );
   }
 }

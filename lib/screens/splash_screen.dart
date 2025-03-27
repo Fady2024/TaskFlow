@@ -3,12 +3,14 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../theme_provider.dart';
+import '../core/theme/theme_provider.dart';
+import '../features/task/bloc/task_bloc.dart';
+import '../features/task/bloc/task_event.dart';
 import 'main_screen.dart';
 import '../main.dart';
-import '../services/task_service.dart';
-import '../blocs/task/task_bloc.dart';
-import '../blocs/task/task_event.dart';
+import '../core/services/task_service.dart';
+import '../features/auth/screens/auth_screen.dart';
+import '../features/onboarding/screens/onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -39,29 +41,70 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     );
 
     _controller.forward();
-    _initializeServices();
+    _initializeApp();
   }
 
-  Future<void> _initializeServices() async {
+  Future<bool> _hasSeenOnboarding() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('hasSeenOnboarding') ?? false;
+  }
+
+  Future<void> _initializeApp() async {
     final taskService = TaskService();
+
     try {
       await initializeNotifications();
       await taskService.initDatabase();
-      context.read<TaskBloc>().add(LoadTasks());
-      print('SplashScreen: Database and notifications initialized successfully');
+      print('SplashScreen: Notifications and database initialized');
 
-      await setInitialized();
+      final hasSeenOnboarding = await _hasSeenOnboarding();
+
+      if (!hasSeenOnboarding) {
+        print('SplashScreen: Showing OnboardingScreen');
+        if (mounted) {
+          _navigateTo(const OnboardingScreen());
+        }
+        return;
+      }
+
+      final session = supabase.auth.currentSession;
+      final prefs = await SharedPreferences.getInstance();
+      final isGuest = prefs.getBool('isGuest') ?? false;
+
+      if (session != null) {
+        print('SplashScreen: User logged in (${session.user.email}), importing data');
+        await taskService.importFromSupabase();
+        context.read<TaskBloc>().add(LoadTasks());
+        await setInitialized();
+        if (mounted) {
+          _navigateTo(const MainScreen());
+        }
+      } else if (isGuest) {
+        print('SplashScreen: Continuing as guest');
+        await taskService.clearAllData();
+        context.read<TaskBloc>().add(LoadTasks());
+        await setInitialized();
+        if (mounted) {
+          _navigateTo(const MainScreen());
+        }
+      } else {
+        print('SplashScreen: No user logged in, showing AuthScreen');
+        await setInitialized();
+        if (mounted) {
+          _navigateTo(const AuthScreen());
+        }
+      }
     } catch (e) {
       print('SplashScreen: Error during initialization: $e');
-    } finally {
-      _navigateToNextScreen();
+      if (mounted) {
+        _navigateTo(const AuthScreen());
+      }
     }
   }
 
-  Future<void> _navigateToNextScreen() async {
-    if (!mounted) return;
+  void _navigateTo(Widget screen) {
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const MainScreen()),
+      MaterialPageRoute(builder: (_) => screen),
     );
   }
 
