@@ -11,8 +11,8 @@ import 'features/pomodoro/bloc/pomodoro_bloc.dart';
 import 'core/services/task_service.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'features/auth/screens/auth_screen.dart';
 import 'features/task/bloc/task_bloc.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
@@ -72,8 +72,11 @@ Future<void> setGuestUser(bool isGuest) async {
   await prefs.setBool('isGuest', isGuest);
 }
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await dotenv.load(fileName: ".env");
+
   tz.initializeTimeZones();
   final location = tz.getLocation('Africa/Cairo');
   tz.setLocalLocation(location);
@@ -82,8 +85,8 @@ void main() async {
   print('Current local time: ${tz.TZDateTime.now(tz.local)}');
 
   await Supabase.initialize(
-    url: 'https://dcwijmijkacnypjwpaws.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjd2lqbWlqa2FjbnlwandwYXdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI5MjExMjEsImV4cCI6MjA1ODQ5NzEyMX0.TgmEq4ON4Vz13Mm_-hJBjha1BSLIX616xmzSMN270Lg',
+    url: dotenv.env['SUPABASE_URL']!,
+    anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
 
   final initialSession = supabase.auth.currentSession;
